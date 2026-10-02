@@ -69,6 +69,10 @@ Settings are stored in `retirement_settings.json` in your Documents folder. If W
 
 Today is not counted. Every weekday from tomorrow through the retirement date is counted, including the retirement day itself, except any listed holidays.
 
+## Contact
+
+Michael Jacobson: [coachmikej@gmail.com](mailto:coachmikej@gmail.com)
+
 ## License
 
 MIT. See [LICENSE](LICENSE).
