@@ -5,6 +5,7 @@
 # Version: 1.0.1  Added settings file to Documents folder for persistence
 # Version: 1.0.2  Daily message, date validation, consistent window size, holiday support,
 #                 settings follow redirected (OneDrive) Documents folder
+# Version: 1.0.3  Workday offset option for vacation and holidays
 # Licensed under the MIT License; see LICENSE.
 # by Michael Jacobson
 
@@ -16,7 +17,7 @@ import json
 import os
 
 APP_NAME = "Retirement Countdown"
-VERSION = "1.0.2"
+VERSION = "1.0.3"
 WINDOW_WIDTH = 200
 WINDOW_HEIGHT = 110
 DATE_FORMATS = ("%B %d %Y %H:%M:%S", "%B %d %Y")
@@ -78,6 +79,7 @@ class RetirementCountdown:
             self.save_retirement_date(self.retirement_date)
         self.target_dt = self.parse_date(self.retirement_date)
         self.holidays = self.load_holidays()
+        self.workday_offset = self.load_workday_offset()
         self.setup_ui()
         self.update_countdown()
         self.setup_popup_menu()
@@ -118,6 +120,7 @@ class RetirementCountdown:
         self.menu.add_command(label="Reset Position", command=self.reset_position)
         self.menu.add_separator()
         self.menu.add_command(label="Update Retirement Date", command=self.update_retirement_date)
+        self.menu.add_command(label="Workday Offset...", command=self.update_workday_offset)
         self.menu.add_separator()
         self.menu.add_command(label="About", command=self.show_about)
         self.menu.add_separator()
@@ -154,7 +157,8 @@ class RetirementCountdown:
             "A compact desktop countdown for tracking a retirement date, "
             "with saved settings in your Documents folder.\n\n"
             "Released under the MIT License.\n\n"
-            "To skip holidays in the workday count, add a \"holidays\" list "
+            "To subtract vacation days and holidays from the workday count, "
+            "use Workday Offset in the right-click menu, or add a \"holidays\" list "
             "of \"YYYY-MM-DD\" dates to retirement_settings.json."
         )
         messagebox.showinfo(f"About {APP_NAME}", about_text, parent=self.master)
@@ -214,6 +218,30 @@ class RetirementCountdown:
         temp_parent.destroy()
         return date_str
 
+    # Show the workday offset dialog centered on the screen.
+    # Returns a whole number of days (0 or more), or None if the user cancels.
+    def ask_workday_offset(self, initial):
+        self.master.update_idletasks()
+        temp_parent = tk.Toplevel(self.master)
+        temp_parent.withdraw()
+        temp_parent.transient(self.master)
+        dialog_width = 320
+        dialog_height = 120
+        screen_w = self.master.winfo_screenwidth()
+        screen_h = self.master.winfo_screenheight()
+        x = (screen_w - dialog_width) // 2
+        y = (screen_h - dialog_height) // 2
+        temp_parent.geometry(f"{dialog_width}x{dialog_height}+{x}+{y}")
+        offset = simpledialog.askinteger(
+            "Workday Offset",
+            "Number of workdays to subtract for vacation and holidays:",
+            initialvalue=initial,
+            minvalue=0,
+            parent=temp_parent
+        )
+        temp_parent.destroy()
+        return offset
+
     # Load all settings from JSON (retirement date, window position, etc.).
     def load_settings(self):
         try:
@@ -256,6 +284,13 @@ class RetirementCountdown:
             except ValueError:
                 pass
         return holidays
+
+    # Load the workday offset from settings; anything missing or invalid counts as 0.
+    def load_workday_offset(self):
+        try:
+            return max(0, int(self.settings.get("workday_offset", 0)))
+        except (ValueError, TypeError):
+            return 0
 
     # Save the current retirement date to JSON.
     def save_retirement_date(self, date_str):
@@ -320,6 +355,17 @@ class RetirementCountdown:
         self.save_retirement_date(self.retirement_date)
         self.update_countdown(force=True)
 
+    # Ask for the number of workdays to subtract (vacation, holidays) and refresh the display.
+    # Cancelling the dialog keeps the current offset.
+    def update_workday_offset(self):
+        offset = self.ask_workday_offset(self.workday_offset)
+        if offset is None:
+            return
+        self.workday_offset = offset
+        self.settings["workday_offset"] = offset
+        self.save_settings()
+        self.update_countdown(force=True)
+
     # Convert a date string into a datetime value. Raises ValueError if it can't be parsed.
     def parse_date(self, date_str):
         for fmt in DATE_FORMATS:
@@ -333,9 +379,14 @@ class RetirementCountdown:
     def get_daily_message(self):
         return random.Random(datetime.date.today().toordinal()).choice(MESSAGES)
 
-    # Count weekdays (excluding holidays) after today, up to and including the target date.
-    # Today is not counted; the retirement day itself is, since it is still a day of work.
+    # Count weekdays (excluding holidays) after today, up to and including the target date,
+    # minus the workday offset. Today is not counted; the retirement day itself is,
+    # since it is still a day of work. Never goes below 0.
     def get_workdays_remaining(self, now, target_dt):
+        return max(0, self.count_weekdays(now, target_dt) - self.workday_offset)
+
+    # Count weekdays (excluding listed holidays) after today, up to and including the target date.
+    def count_weekdays(self, now, target_dt):
         start_date = now.date()
         end_date = target_dt.date()
         if end_date <= start_date:

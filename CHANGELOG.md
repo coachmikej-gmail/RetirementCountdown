@@ -3,6 +3,11 @@
 All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project uses [Semantic Versioning](https://semver.org/).
 
+## [1.0.3] - 2026-10-21
+
+### Added
+- **Workday Offset...** in the right-click menu. It asks for a whole number of days (vacation, holidays) to subtract from the remaining workdays. The number is saved as `workday_offset` in the settings file.
+
 ## [1.0.2] - 2026-10-02
 
 ### Added

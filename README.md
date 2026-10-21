@@ -48,6 +48,7 @@ Menu options:
 - **Stay on Top**: keep the window above other windows
 - **Reset Position**: move the window back to the bottom-right corner
 - **Update Retirement Date**: change the target date (Cancel keeps the current one)
+- **Workday Offset...**: enter a whole number of days (0 or more) to subtract from the remaining workdays, such as vacation days and holidays. Enter 0 to clear it.
 - **About**: version information
 - **Close App**: save the window position and exit
 
@@ -59,15 +60,20 @@ Settings are stored in `retirement_settings.json` in your Documents folder. If W
 {
   "retirement_date": "June 1 2027 17:00:00",
   "window_position": {"x": 1715, "y": 920, "width": 200, "height": 110},
+  "workday_offset": 15,
   "holidays": ["2026-11-26", "2026-12-25", "2027-01-01"]
 }
 ```
+
+`workday_offset` is set with **Workday Offset...** in the right-click menu.
 
 `holidays` is optional and is only edited by hand. List dates in `YYYY-MM-DD` format, and they'll be left out of the workday count. Entries it can't read are ignored.
 
 ### How workdays are counted
 
-Today is not counted. Every weekday from tomorrow through the retirement date is counted, including the retirement day itself, except any listed holidays.
+Today is not counted. Every weekday from tomorrow through the retirement date is counted, including the retirement day itself, except any listed holidays. The workday offset is then subtracted. The count never goes below 0.
+
+The offset is a fixed number and doesn't go down by itself. Lower it as you use vacation days or as holidays pass, or the count will subtract them twice.
 
 ## Contact
 
